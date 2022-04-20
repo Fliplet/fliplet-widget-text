@@ -41,15 +41,16 @@
     }
 
     function saveChanges() {
+      if ($WYSIWYG_SELECTOR.find('.' + PLACEHOLDER_CLASS).length) {
+        return;
+      }
+
       cleanUpContent();
 
       var data = {
         html: editor && typeof editor.getContent === 'function'
           ? editor.getContent()
-          : widgetData.html,
-        hasValue: editor && typeof editor.getContent === 'function'
-          ? hasValue
-          : widgetData.hasValue
+          : widgetData.html
       };
 
       onBlur = false;
@@ -248,9 +249,7 @@
             ed.on('input', function() {
               Fliplet.Widget.updateHighlightDimensions(widgetData.id);
 
-              var value = $element.text().trim().replace(/[\r\n]+/g, '');
-
-              hasValue = !!value;
+              hasValue = !!tinymce.activeEditor.getContent();
 
               if (!isInitialized) {
                 return;
@@ -261,7 +260,7 @@
             });
 
             ed.on('focus', function() {
-              if (!hasValue && !widgetData.hasValue) {
+              if (!hasValue) {
                 $element.text('');
               }
 
@@ -271,10 +270,10 @@
             });
 
             ed.on('blur', function() {
-              var value = $element.text().trim().replace(/[\r\n]+/g, '');
-
-              if (!value) {
+              if (tinymce.activeEditor.getContent() === '') {
                 insertPlaceholder();
+                editor.hide();
+
                 hasValue = false;
 
                 return;
