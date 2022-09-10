@@ -260,7 +260,7 @@
             });
 
             ed.on('focus', function() {
-              if (widgetData.html === '' || typeof widgetData.html === 'undefined') {
+              if (!widgetData.html) {
                 $element.text('');
               }
 
