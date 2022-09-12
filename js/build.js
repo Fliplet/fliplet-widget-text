@@ -260,7 +260,7 @@
             });
 
             ed.on('focus', function() {
-              if (!hasValue) {
+              if (!widgetData.html) {
                 $element.text('');
               }
 
