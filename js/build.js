@@ -264,7 +264,7 @@
                 $element.text('');
               }
 
-              $element.parents('[draggable="true"]').attr('draggable', false);
+              $element.closest('[draggable="true"]').attr('draggable', false);
               Fliplet.Studio.emit('show-toolbar', true);
               Fliplet.Studio.emit('set-wysiwyg-status', true);
             });
@@ -280,7 +280,7 @@
               }
 
               onBlur = true;
-              $element.parents('[draggable="false"]').attr('draggable', true);
+              $element.closest('[draggable="false"]').attr('draggable', true);
 
               Fliplet.Studio.emit('set-wysiwyg-status', false);
 
