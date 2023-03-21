@@ -2,12 +2,13 @@
   var editors = {};
 
   Fliplet.Widget.instance('text', function(widgetData) {
+    var $el = $(this);
     var editor;
     var MIRROR_ELEMENT_CLASS = 'fl-mirror-element';
     var MIRROR_ROOT_CLASS = 'fl-mirror-root';
     var PLACEHOLDER_CLASS = 'fl-text-placeholder';
     var WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
-    var $WYSIWYG_SELECTOR = $('[data-text-id="' + widgetData.id + '"]');
+    var $WYSIWYG_SELECTOR = $el.find('[data-text-id="' + widgetData.id + '"]');
     var debounceSave = _.debounce(saveChanges, 500, { leading: true });
     var mode = Fliplet.Env.get('mode');
     var isDev = Fliplet.Env.get('development');
@@ -16,6 +17,10 @@
     var onBlur = false;
     var contentTemplate = Fliplet.Widget.Templates['templates.build.content'];
     var lastSavedHtml;
+
+    if (mode === 'interact' && $el.parents('fl-list-repeater-row.readonly').length) {
+      mode = 'preview';
+    }
 
     function cleanUpContent() {
       // Remove any existing markers
@@ -96,6 +101,11 @@
               });
 
               _.assignIn(widgetData, data);
+
+              // Update content in other instances of this field
+              if ($el.parents('fl-list-repeater-row').length) {
+                $('fl-list-repeater-row.readonly [data-fl-widget-instance][data-id="' + widgetData.id + '"] [data-widget-name="text"]').html(lastSavedHtml);
+              }
             });
         });
     }
