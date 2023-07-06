@@ -393,6 +393,8 @@
     }
 
     init();
+  }, {
+    supportsDynamicContext: true
   });
 
   Fliplet.Widget.register('Text', function() {
