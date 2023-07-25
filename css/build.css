@@ -8,7 +8,11 @@
   outline: none;
 }
 
-.mce-content-body *[contentEditable=false][data-mce-selected] {
+.mode-interact [data-widget-package="com.fliplet.text"] > * {
+  pointer-events: all !important;
+}
+
+.mce-content-body *[contentEditable="false"][data-mce-selected] {
   outline: none !important;
 }
 
