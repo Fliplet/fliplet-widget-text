@@ -8,7 +8,6 @@
     var MIRROR_ROOT_CLASS = 'fl-mirror-root';
     var PLACEHOLDER_CLASS = 'fl-text-placeholder';
     var WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
-    var $WYSIWYG_SELECTOR = $el.find('[data-text-id="' + widgetData.id + '"]');
     var debounceSave = _.debounce(saveChanges, 500, { leading: true });
     var mode = Fliplet.Env.get('mode');
     var isDev = Fliplet.Env.get('development');
@@ -46,7 +45,7 @@
     }
 
     function saveChanges() {
-      if ($WYSIWYG_SELECTOR.find('.' + PLACEHOLDER_CLASS).length) {
+      if ($el.find('.' + PLACEHOLDER_CLASS).length) {
         return;
       }
 
@@ -173,7 +172,7 @@
     }
 
     function attachEventHandler() {
-      $WYSIWYG_SELECTOR.on('click', function() {
+      $el.on('click', function() {
         initializeEditor().then(function() {
           editor.show();
         });
@@ -186,16 +185,14 @@
     }
 
     function initializeEditor() {
-      var $element = $WYSIWYG_SELECTOR;
-
-      editor = tinymce.get($element.attr('id'));
+      editor = tinymce.get($el.attr('id'));
 
       if (editor) {
         return Promise.resolve(editor);
       }
 
       return new Promise(function(resolve) {
-        $element.tinymce({
+        $el.tinymce({
           inline: true,
           menubar: false,
           force_br_newlines: false,
@@ -235,7 +232,7 @@
               // Removes position from Editor element.
               // TinyMCE adds the position style to place the toolbar absolute positioned
               // We hide the toolbar and the TinyMCE feature is causing problems
-              $element.attr('style', function(i, style) {
+              $el.attr('style', function(i, style) {
                 return style.replace(/position[^;]+;?/g, '');
               });
 
@@ -271,10 +268,10 @@
 
             ed.on('focus', function() {
               if (!widgetData.html) {
-                $element.text('');
+                $el.text('');
               }
 
-              $element.closest('[draggable="true"]').attr('draggable', false);
+              $el.closest('[draggable="true"]').attr('draggable', false);
               Fliplet.Studio.emit('show-toolbar', true);
               Fliplet.Studio.emit('set-wysiwyg-status', true);
             });
@@ -290,7 +287,7 @@
               }
 
               onBlur = true;
-              $element.closest('[draggable="false"]').attr('draggable', true);
+              $el.closest('[draggable="false"]').attr('draggable', true);
 
               Fliplet.Studio.emit('set-wysiwyg-status', false);
 
@@ -364,13 +361,13 @@
     function insertPlaceholder() {
       var contentHTML = contentTemplate();
 
-      $WYSIWYG_SELECTOR.html(contentHTML);
+      $el.html(contentHTML);
     }
 
     function init() {
       registerHandlebarsHelpers();
 
-      if (!widgetData.html && !$WYSIWYG_SELECTOR.find('.' + PLACEHOLDER_CLASS).length) {
+      if (!widgetData.html && !$el.find('.' + PLACEHOLDER_CLASS).length) {
         insertPlaceholder();
       }
 
