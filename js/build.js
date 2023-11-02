@@ -12,7 +12,6 @@
     var mode = Fliplet.Env.get('mode');
     var isDev = Fliplet.Env.get('development');
     var isInitialized = false;
-    var hasValue = !!widgetData.html;
     var onBlur = false;
     var contentTemplate = Fliplet.Widget.Templates['templates.build.content'];
     var lastSavedHtml;
@@ -21,17 +20,25 @@
       mode = 'preview';
     }
 
-    function cleanUpContent() {
+    function cleanUpContent(content) {
+      var $content = typeof content !== 'undefined'
+        ? $('<div></div>').append(content)
+        : $(document.body);
+
       // Remove any existing markers
-      $('.' + MIRROR_ELEMENT_CLASS).removeClass(MIRROR_ELEMENT_CLASS);
-      $('.' + MIRROR_ROOT_CLASS).removeClass(MIRROR_ROOT_CLASS);
-      $('.' + PLACEHOLDER_CLASS).removeClass(PLACEHOLDER_CLASS);
-      $('.fl-wysiwyg-text .fl-wysiwyg-text.mce-content-body').replaceWith(function() {
+      $content.find('.' + MIRROR_ELEMENT_CLASS).removeClass(MIRROR_ELEMENT_CLASS);
+      $content.find('.' + MIRROR_ROOT_CLASS).removeClass(MIRROR_ROOT_CLASS);
+      $content.find('.' + PLACEHOLDER_CLASS).removeClass(PLACEHOLDER_CLASS);
+      $content.find('.fl-wysiwyg-text .fl-wysiwyg-text.mce-content-body').replaceWith(function() {
         return $(this).contents();
       });
 
       // Remove empty class attributes
-      $('[class=""]').removeAttr('class');
+      $content.find('[class=""]').removeAttr('class');
+
+      if (typeof content !== 'undefined') {
+        return $content.html().trim();
+      }
     }
 
     function replaceWidgetInstances($html) {
@@ -56,6 +63,12 @@
           ? editor.getContent()
           : widgetData.html
       };
+      var cleanedUpContent = cleanUpContent(data.html);
+
+      // Remove placeholder content
+      if (cleanedUpContent === cleanUpContent(contentTemplate())) {
+        data.html = '';
+      }
 
       onBlur = false;
 
@@ -256,8 +269,6 @@
             ed.on('input', function() {
               Fliplet.Widget.updateHighlightDimensions(widgetData.id);
 
-              hasValue = !!tinymce.activeEditor.getContent();
-
               if (!isInitialized) {
                 return;
               }
@@ -280,8 +291,6 @@
               if (tinymce.activeEditor.getContent() === '') {
                 insertPlaceholder();
                 editor.hide();
-
-                hasValue = false;
 
                 return;
               }
