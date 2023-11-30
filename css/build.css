@@ -1,5 +1,6 @@
 .mode-interact .mce-tinymce-inline,
-.mode-interact .tox-tinymce-inline {
+.mode-interact .tox-tinymce-inline,
+.mode-interact .tox-tinymce-aux {
   display: none !important;
 }
 
