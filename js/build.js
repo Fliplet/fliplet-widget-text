@@ -214,9 +214,8 @@
           object_resizing: false,
           verify_html: false,
           plugins: [
-            'advlist lists link image charmap hr',
-            'searchreplace wordcount insertdatetime table textcolor colorpicker',
-            'noneditable'
+            'advlist', 'lists', 'link', 'image', 'charmap',
+            'searchreplace', 'wordcount', 'insertdatetime', 'table'
           ],
           valid_styles: {
             '*': 'font-family,font-size,font-weight,font-style,text-decoration,text-align,padding,padding-left,padding-right,padding-top,padding-bottom,padding,margin-left,margin-right,margin-top,margin-bottom,margin,display,float,color,background,background-color,background-image,list-style-type,line-height,letter-spacing,width,height,min-width,max-width,min-height,max-height,border,border-top,border-bottom,border-left,border-right,position,opacity,top,left,right,bottom,overflow,z-index',

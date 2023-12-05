@@ -1,5 +1,7 @@
-.mode-interact .mce-tinymce-inline {
-  display: none;
+.mode-interact .mce-tinymce-inline,
+.mode-interact .tox-tinymce-inline,
+.mode-interact .tox-tinymce-aux {
+  display: none !important;
 }
 
 .mode-interact .mce-edit-highlight,
@@ -14,6 +16,7 @@
 
 .mce-content-body *[contentEditable="false"][data-mce-selected] {
   outline: none !important;
+  cursor: default !important;
 }
 
 .fl-wysiwyg-text {
