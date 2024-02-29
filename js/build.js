@@ -208,12 +208,15 @@
         var tinymceVersion = tinymce.majorVersion + '.' + tinymce.minorVersion;
         var plugins = [
           'advlist', 'lists', 'link', 'image', 'charmap',
-          'searchreplace', 'wordcount', 'insertdatetime', 'table'
+          'searchreplace', 'wordcount', 'insertdatetime', 'table', 'textcolor'
         ];
 
-        if (_.includes(tinymceVersion, '4')) {
-          plugins.push('textcolor');
-        }
+        var deprecatedPlugins = {
+          '6.8.1': ['textcolor']
+        };
+
+        // Remove deprecated plugins
+        plugins = _.difference(plugins, deprecatedPlugins[tinymceVersion]);
 
         $el.tinymce({
           inline: true,
