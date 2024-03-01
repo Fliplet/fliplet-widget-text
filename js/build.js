@@ -205,6 +205,19 @@
       }
 
       return new Promise(function(resolve) {
+        var tinymceVersion = tinymce.majorVersion + '.' + tinymce.minorVersion;
+        var plugins = [
+          'advlist', 'lists', 'link', 'image', 'charmap',
+          'searchreplace', 'wordcount', 'insertdatetime', 'table', 'textcolor'
+        ];
+
+        var deprecatedPlugins = {
+          '6.8.1': ['textcolor']
+        };
+
+        // Remove deprecated plugins
+        plugins = _.difference(plugins, deprecatedPlugins[tinymceVersion]);
+
         $el.tinymce({
           inline: true,
           menubar: false,
@@ -213,10 +226,7 @@
           forced_root_block: 'p',
           object_resizing: false,
           verify_html: false,
-          plugins: [
-            'advlist', 'lists', 'link', 'image', 'charmap',
-            'searchreplace', 'wordcount', 'insertdatetime', 'table'
-          ],
+          plugins,
           valid_styles: {
             '*': 'font-family,font-size,font-weight,font-style,text-decoration,text-align,padding,padding-left,padding-right,padding-top,padding-bottom,padding,margin-left,margin-right,margin-top,margin-bottom,margin,display,float,color,background,background-color,background-image,list-style-type,line-height,letter-spacing,width,height,min-width,max-width,min-height,max-height,border,border-top,border-bottom,border-left,border-right,position,opacity,top,left,right,bottom,overflow,z-index',
             img: 'text-align,margin-left,margin-right,display,float,width,height,background,background-color',
