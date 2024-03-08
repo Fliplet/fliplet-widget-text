@@ -390,6 +390,8 @@
       }
 
       if (mode !== 'interact') {
+        Fliplet.Widget.initializeChildren($el);
+
         cleanUpContent();
 
         if (!isDev) {
