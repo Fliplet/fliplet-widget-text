@@ -9,14 +9,6 @@
     var PLACEHOLDER_CLASS = 'fl-text-placeholder';
     var WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
     var debounceSave = _.debounce(saveChanges, 500, { leading: true });
-    var debounceRenderEvent = _.debounce(function() {
-      if (mode === 'interact') {
-        Fliplet.Hooks.run('componentEvent', {
-          type: 'render',
-          target: new Fliplet.Interact.ComponentNode($el)
-        });
-      }
-    }, 200);
     var mode = Fliplet.Env.get('mode');
     var isDev = Fliplet.Env.get('development');
     var isInitialized = false;
@@ -31,7 +23,7 @@
     function cleanUpContent(content) {
       var $content = typeof content !== 'undefined'
         ? $('<div></div>').append(content)
-        : $el;
+        : $(document.body);
 
       // Remove any existing markers
       $content.find('.' + MIRROR_ELEMENT_CLASS).removeClass(MIRROR_ELEMENT_CLASS);
@@ -74,7 +66,7 @@
       var cleanedUpContent = cleanUpContent(data.html);
 
       // Remove placeholder content
-      if (cleanedUpContent === cleanUpContent(contentTemplate({ mode }))) {
+      if (cleanedUpContent === cleanUpContent(contentTemplate())) {
         data.html = '';
       }
 
@@ -121,6 +113,11 @@
               });
 
               _.assignIn(widgetData, data);
+
+              // Update content in other instances of this field
+              if ($el.parents('fl-list-repeater-row').length) {
+                $('fl-list-repeater-row.readonly [data-fl-widget-instance][data-id="' + widgetData.id + '"] [data-widget-name="text"]').html(lastSavedHtml);
+              }
             });
         });
     }
@@ -276,8 +273,6 @@
 
               // Save changes
               debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
 
             ed.on('input', function() {
@@ -289,8 +284,6 @@
 
               // Save changes
               debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
 
             ed.on('focus', function() {
@@ -322,8 +315,6 @@
 
               // Save changes
               debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
 
             ed.on('nodeChange', function(e) {
@@ -367,8 +358,6 @@
 
               // Save changes
               debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
           }
         });
@@ -377,7 +366,7 @@
 
     function registerHandlebarsHelpers() {
       Handlebars.registerHelper('isInteractable', function(options) {
-        var result = options.data.root.mode === 'interact' || isDev;
+        var result = mode === 'interact' || isDev;
 
         if (result === false) {
           return options.inverse(this);
@@ -388,7 +377,7 @@
     }
 
     function insertPlaceholder() {
-      var contentHTML = contentTemplate({ mode });
+      var contentHTML = contentTemplate();
 
       $el.html(contentHTML);
     }
