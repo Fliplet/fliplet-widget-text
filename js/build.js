@@ -349,9 +349,9 @@
               Fliplet.Studio.emit('tinymce', {
                 message: 'tinymceNodeChange',
                 payload: {
-                  html: e.parents.length ?
-                    e.parents[e.parents.length - 1].outerHTML :
-                    e.element.outerHTML,
+                  html: e.parents.length
+                    ? e.parents[e.parents.length - 1].outerHTML
+                    : e.element.outerHTML,
                   styles: [
                     '.' + MIRROR_ELEMENT_CLASS + ' {',
                     '\tfont-family: ' + fontFamily + ';',
@@ -402,6 +402,8 @@
 
       if (mode !== 'interact') {
         cleanUpContent();
+
+        Fliplet.Widget.initializeChildren($el.get(0));
 
         if (!isDev) {
           return;
