@@ -368,7 +368,7 @@
               // Save changes
               debounceSave();
               // Trigger render event
-              debounceRenderEvent();
+              // debounceRenderEvent();
             });
           }
         });
