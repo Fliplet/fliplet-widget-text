@@ -22,3 +22,8 @@
 .fl-wysiwyg-text {
   word-break: break-word;
 }
+
+fl-list-repeater-row.readonly .fl-text-placeholder {
+  opacity: 0;
+  visibility: hidden;
+}
