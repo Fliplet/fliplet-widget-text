@@ -259,7 +259,7 @@
               resolve();
             });
 
-            ed.on('change', async function() {
+            ed.on('change', function() {
               Fliplet.Widget.updateHighlightDimensions(widgetData.id);
 
               if (!isInitialized) {
@@ -267,10 +267,10 @@
               }
 
               // Save changes
-              await debounceSave();
+              debounceSave();
             });
 
-            ed.on('input', async function() {
+            ed.on('input', function() {
               Fliplet.Widget.updateHighlightDimensions(widgetData.id);
 
               if (!isInitialized) {
@@ -278,7 +278,7 @@
               }
 
               // Save changes
-              await debounceSave();
+              debounceSave();
             });
 
             ed.on('focus', function() {
@@ -291,7 +291,7 @@
               Fliplet.Studio.emit('set-wysiwyg-status', true);
             });
 
-            ed.on('blur', async function() {
+            ed.on('blur', function() {
               if (tinymce.activeEditor.getContent() === '') {
                 insertPlaceholder();
                 editor.hide();
@@ -309,10 +309,10 @@
               }
 
               // Save changes
-              await debounceSave();
+              debounceSave();
             });
 
-            ed.on('nodeChange', async function(e) {
+            ed.on('nodeChange', function(e) {
               /* Mirror TinyMCE selection and styles to Studio TinyMCE instance */
 
               // Update element highlight if there isn't already an inline element selected
@@ -352,7 +352,7 @@
               }
 
               // Save changes
-              await debounceSave();
+              debounceSave();
             });
           }
         });
