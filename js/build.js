@@ -94,7 +94,7 @@
       lastSavedHtml = data.html;
 
       if (!Fliplet.Env.get('development')) {
-        Fliplet.API.request({
+        await Fliplet.API.request({
           url: `v1/widget-instances/${widgetData.id}`,
           method: 'PUT',
           data
