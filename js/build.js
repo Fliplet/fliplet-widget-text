@@ -9,14 +9,6 @@
     var PLACEHOLDER_CLASS = 'fl-text-placeholder';
     var WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
     var debounceSave = _.debounce(saveChanges, 500, { leading: true });
-    var debounceRenderEvent = _.debounce(function() {
-      if (mode === 'interact') {
-        Fliplet.Hooks.run('componentEvent', {
-          type: 'render',
-          target: new Fliplet.Interact.ComponentNode($el)
-        });
-      }
-    }, 200);
     var mode = Fliplet.Env.get('mode');
     var isDev = Fliplet.Env.get('development');
     var isInitialized = false;
@@ -59,8 +51,8 @@
       return $html;
     }
 
-    function saveChanges() {
-      if ($el.find('.' + PLACEHOLDER_CLASS).length) {
+    async function saveChanges() {
+      if ($el.find('.' + PLACEHOLDER_CLASS).length || mode === 'preview') {
         return;
       }
 
@@ -81,48 +73,48 @@
       onBlur = false;
 
       var $html = $('<div>' + data.html + '</div>').clone();
-      var $replacedHTML = replaceWidgetInstances($html);
+      var replacedHTML = replaceWidgetInstances($html).html();
 
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes
-      return Fliplet.Hooks.run('beforeSavePageContent', $replacedHTML.html())
-        .then(function(html) {
-          if (!Array.isArray(html) || !html.length) {
-            html = [$replacedHTML.html()];
-          }
+      const html = await Fliplet.Hooks.run('beforeSavePageContent', replacedHTML);
+      
+      data.html = [html].flat().at(-1) || replacedHTML; // [value].flat().at(-1) is used to get the last value of the array if it's an array, otherwise it returns the value itself 
+      
+      // Cache HTML for the first time
+      // The first save is always triggered by 'nodeChange' event on focus
+      // so there's no need to save anything
+      if (typeof lastSavedHtml === 'undefined') {
+        lastSavedHtml = data.html;
+      }
 
-          return html[html.length - 1];
-        }).then(function(html) {
-          data.html = html;
+      // HTML has not changed. No need to save.
+      if (lastSavedHtml === data.html) {
+        return;
+      }
 
-          // Cache HTML for the first time
-          // The first save is always triggered by 'nodeChange' event on focus
-          // so there's no need to save anything
-          if (typeof lastSavedHtml === 'undefined') {
-            lastSavedHtml = data.html;
-          }
+      lastSavedHtml = data.html;
 
-          // HTML has not changed. No need to save.
-          if (lastSavedHtml === data.html) {
-            return;
-          }
-
-          lastSavedHtml = data.html;
-
-          return Fliplet.Env.get('development')
-            ? Promise.resolve()
-            : Fliplet.API.request({
-              url: 'v1/widget-instances/' + widgetData.id,
-              method: 'PUT',
-              data: data
-            }).then(function() {
-              Fliplet.Studio.emit('page-preview-send-event', {
-                type: 'savePage'
-              });
-
-              _.assignIn(widgetData, data);
-            });
+      if (!Fliplet.Env.get('development')) {
+        Fliplet.API.request({
+          url: 'v1/widget-instances/' + widgetData.id,
+          method: 'PUT',
+          data: data
         });
+      }
+ 
+      Fliplet.Studio.emit('page-preview-send-event', {
+        type: 'savePage'
+      });
+
+      _.assignIn(widgetData, data);
+
+      if (mode === 'interact') {
+        Fliplet.Hooks.run('componentEvent', {
+          type: 'render',
+          target: new Fliplet.Interact.ComponentNode($el)
+        });
+      }
     }
 
     function studioEventHandler() {
@@ -276,8 +268,6 @@
 
               // Save changes
               await debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
 
             ed.on('input', async function() {
@@ -289,8 +279,6 @@
 
               // Save changes
               await debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
 
             ed.on('focus', function() {
@@ -322,8 +310,6 @@
 
               // Save changes
               await debounceSave();
-              // Trigger render event
-              debounceRenderEvent();
             });
 
             ed.on('nodeChange', async function(e) {
@@ -367,8 +353,6 @@
 
               // Save changes
               await debounceSave();
-              // Trigger render event
-              // debounceRenderEvent();
             });
           }
         });
