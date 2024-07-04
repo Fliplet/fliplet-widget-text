@@ -58,12 +58,10 @@
 
       cleanUpContent();
 
-      var data = {
-        html: editor && typeof editor.getContent === 'function'
-          ? editor.getContent()
-          : widgetData.html
+      const data = {
+        html: editor?.getContent?.() || widgetData.html
       };
-      var cleanedUpContent = cleanUpContent(data.html);
+      const cleanedUpContent = cleanUpContent(data.html);
 
       // Remove placeholder content
       if (cleanedUpContent === cleanUpContent(contentTemplate({ mode }))) {
@@ -72,8 +70,8 @@
 
       onBlur = false;
 
-      var $html = $('<div>' + data.html + '</div>').clone();
-      var replacedHTML = replaceWidgetInstances($html).html();
+      const $html = $(`<div>${data.html}</div>`);
+      const replacedHTML = replaceWidgetInstances($html).html();
 
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes
@@ -97,9 +95,9 @@
 
       if (!Fliplet.Env.get('development')) {
         Fliplet.API.request({
-          url: 'v1/widget-instances/' + widgetData.id,
+          url: `v1/widget-instances/${widgetData.id}`,
           method: 'PUT',
-          data: data
+          data
         });
       }
  
@@ -107,14 +105,12 @@
         type: 'savePage'
       });
 
-      _.assignIn(widgetData, data);
+      Object.assign(widgetData, data);
 
-      if (mode === 'interact') {
-        Fliplet.Hooks.run('componentEvent', {
-          type: 'render',
-          target: new Fliplet.Interact.ComponentNode($el)
-        });
-      }
+      Fliplet.Hooks.run('componentEvent', {
+        type: 'render',
+        target: new Fliplet.Interact.ComponentNode($el)
+      });
     }
 
     function studioEventHandler() {
