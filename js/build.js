@@ -350,6 +350,8 @@
               // Save changes
               debounceSave();
             });
+
+            ed.on('BeforeUnload', saveChanges);
           }
         });
       });
