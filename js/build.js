@@ -93,7 +93,7 @@
         el.outerHTML = `{{{widget ${widgetInstanceId}}}}`;
       });
 
-      const replacedHTML = doc.body.innerHTML;
+      const replacedHTML = replaceWidgetInstances(doc.body.innerHTML);
 
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes
