@@ -35,25 +35,20 @@
     };
 
     const cleanUpContent = (content) => {
-      const tempDiv = content !== undefined
-        ? document.createElement('div')
-        : el;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content || '', 'text/html');
       
-      if (content !== undefined) {
-        tempDiv.innerHTML = content;
-      }
-
       // Remove any existing markers
-      tempDiv.querySelectorAll('.' + MIRROR_ELEMENT_CLASS).forEach(el => el.classList.remove(MIRROR_ELEMENT_CLASS));
-      tempDiv.querySelectorAll('.' + MIRROR_ROOT_CLASS).forEach(el => el.classList.remove(MIRROR_ROOT_CLASS));
-      tempDiv.querySelectorAll('.fl-wysiwyg-text .fl-wysiwyg-text.mce-content-body').forEach(el => {
+      doc.querySelectorAll('.' + MIRROR_ELEMENT_CLASS).forEach(el => el.classList.remove(MIRROR_ELEMENT_CLASS));
+      doc.querySelectorAll('.' + MIRROR_ROOT_CLASS).forEach(el => el.classList.remove(MIRROR_ROOT_CLASS));
+      doc.querySelectorAll('.fl-wysiwyg-text .fl-wysiwyg-text.mce-content-body').forEach(el => {
         el.replaceWith(...el.childNodes);
       });
 
       // Remove empty class attributes
-      tempDiv.querySelectorAll('[class=""]').forEach(el => el.removeAttribute('class'));
+      doc.querySelectorAll('[class=""]').forEach(el => el.removeAttribute('class'));
 
-      return content !== undefined ? tempDiv.innerHTML.trim() : undefined;
+      return doc.body.innerHTML.trim();
     };
 
     const replaceWidgetInstances = (html) => {
@@ -73,14 +68,14 @@
         return;
       }
 
-      cleanUpContent();
-
       const editorContent = editor?.getContent?.();
 
       const data = {
         // Weak comparison to allow empty string to be saved
         html: editorContent != null ? editorContent : widgetData.html
       };
+
+      // Use a more careful cleaning approach
       const cleanedUpContent = cleanUpContent(data.html);
 
       // Allow empty content to be saved
@@ -88,7 +83,17 @@
 
       onBlur = false;
 
-      const replacedHTML = replaceWidgetInstances(data.html);
+      // Use a DOMParser to handle HTML parsing, which should preserve table structures
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(data.html, 'text/html');
+
+      // Replace widget instances
+      doc.querySelectorAll(WIDGET_INSTANCE_SELECTOR).forEach(el => {
+        const widgetInstanceId = el.dataset.id;
+        el.outerHTML = `{{{widget ${widgetInstanceId}}}}`;
+      });
+
+      const replacedHTML = doc.body.innerHTML;
 
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes

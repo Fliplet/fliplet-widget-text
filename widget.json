@@ -24,7 +24,6 @@
     ],
     "assets": [
       "css/build.css",
-      "js/build.templates.js",
       "js/build.js"
     ]
   },
