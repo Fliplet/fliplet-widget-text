@@ -1,83 +1,100 @@
 (function() {
-  var editors = {};
+  const editors = {};
+
+  // Native debounce function to replace _.debounce
+  function debounce(func, wait, options = {}) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        timeout = null;
+        if (!options.leading) func.apply(this, args);
+      };
+      const callNow = options.leading && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) func.apply(this, args);
+    };
+  }
 
   Fliplet.Widget.instance('text', function(widgetData) {
-    var $el = $(this);
-    var editor;
-    var MIRROR_ELEMENT_CLASS = 'fl-mirror-element';
-    var MIRROR_ROOT_CLASS = 'fl-mirror-root';
-    var PLACEHOLDER_CLASS = 'fl-text-placeholder';
-    var WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
-    var debounceSave = _.debounce(saveChanges, 500, { leading: true });
-    var mode = Fliplet.Env.get('mode');
-    var isDev = Fliplet.Env.get('development');
-    var isInitialized = false;
-    var onBlur = false;
-    var contentTemplate = Fliplet.Widget.Templates['templates.build.content'];
-    var lastSavedHtml;
+    const el = this;
+    let editor;
+    const MIRROR_ELEMENT_CLASS = 'fl-mirror-element';
+    const MIRROR_ROOT_CLASS = 'fl-mirror-root';
+    const WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
+    const isDev = Fliplet.Env.get('development');
+    let isInitialized = false;
+    let onBlur = false;
+    let lastSavedHtml;
 
-    if (mode === 'interact' && $el.parents('fl-list-repeater-row.readonly').length) {
-      mode = 'preview';
-    }
+    const getMode = () => {
+      const mode = Fliplet.Env.get('mode');
+      return mode === 'interact' && el.closest('fl-list-repeater-row.readonly')
+        ? 'preview'
+        : mode;
+    };
 
-    function cleanUpContent(content) {
-      var $content = typeof content !== 'undefined'
-        ? $('<div></div>').append(content)
-        : $el;
+    const cleanUpContent = (content) => {
+      const tempDiv = content !== undefined
+        ? document.createElement('div')
+        : el;
+      
+      if (content !== undefined) {
+        tempDiv.innerHTML = content;
+      }
 
       // Remove any existing markers
-      $content.find('.' + MIRROR_ELEMENT_CLASS).removeClass(MIRROR_ELEMENT_CLASS);
-      $content.find('.' + MIRROR_ROOT_CLASS).removeClass(MIRROR_ROOT_CLASS);
-      $content.find('.' + PLACEHOLDER_CLASS).removeClass(PLACEHOLDER_CLASS);
-      $content.find('.fl-wysiwyg-text .fl-wysiwyg-text.mce-content-body').replaceWith(function() {
-        return $(this).contents();
+      tempDiv.querySelectorAll('.' + MIRROR_ELEMENT_CLASS).forEach(el => el.classList.remove(MIRROR_ELEMENT_CLASS));
+      tempDiv.querySelectorAll('.' + MIRROR_ROOT_CLASS).forEach(el => el.classList.remove(MIRROR_ROOT_CLASS));
+      tempDiv.querySelectorAll('.fl-wysiwyg-text .fl-wysiwyg-text.mce-content-body').forEach(el => {
+        el.replaceWith(...el.childNodes);
       });
 
       // Remove empty class attributes
-      $content.find('[class=""]').removeAttr('class');
+      tempDiv.querySelectorAll('[class=""]').forEach(el => el.removeAttribute('class'));
 
-      if (typeof content !== 'undefined') {
-        return $content.html().trim();
-      }
-    }
+      return content !== undefined ? tempDiv.innerHTML.trim() : undefined;
+    };
 
-    function replaceWidgetInstances($html) {
-      $html.find(WIDGET_INSTANCE_SELECTOR).replaceWith(function() {
-        var widgetInstanceId = $(this).data('id');
+    const replaceWidgetInstances = (html) => {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
 
-        return '{{{widget ' + widgetInstanceId + '}}}';
+      tempDiv.querySelectorAll(WIDGET_INSTANCE_SELECTOR).forEach(el => {
+        const widgetInstanceId = el.dataset.id;
+        el.outerHTML = `{{{widget ${widgetInstanceId}}}}`;
       });
 
-      return $html;
-    }
+      return tempDiv.innerHTML;
+    };
 
-    async function saveChanges() {
-      if ($el.find('.' + PLACEHOLDER_CLASS).length || mode === 'preview') {
+    const saveChanges = async () => {
+      if (getMode() === 'preview') {
         return;
       }
 
       cleanUpContent();
 
+      const editorContent = editor?.getContent?.();
+
       const data = {
-        html: editor?.getContent?.() || widgetData.html
+        // Weak comparison to allow empty string to be saved
+        html: editorContent != null ? editorContent : widgetData.html
       };
       const cleanedUpContent = cleanUpContent(data.html);
 
-      // Remove placeholder content
-      if (cleanedUpContent === cleanUpContent(contentTemplate({ mode }))) {
-        data.html = '';
-      }
+      // Allow empty content to be saved
+      data.html = cleanedUpContent;
 
       onBlur = false;
 
-      const $html = $(`<div>${data.html}</div>`);
-      const replacedHTML = replaceWidgetInstances($html).html();
+      const replacedHTML = replaceWidgetInstances(data.html);
 
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes
       const html = await Fliplet.Hooks.run('beforeSavePageContent', replacedHTML);
       
-      data.html = [html].flat().at(-1) || replacedHTML; // [value].flat().at(-1) is used to get the last value of the array if it's an array, otherwise it returns the value itself 
+      data.html = [html].flat().at(-1) || replacedHTML;
       
       // Cache HTML for the first time
       // The first save is always triggered by 'nodeChange' event on focus
@@ -100,7 +117,7 @@
           data
         });
       }
- 
+
       Fliplet.Studio.emit('page-preview-send-event', {
         type: 'savePage'
       });
@@ -109,107 +126,90 @@
 
       Fliplet.Hooks.run('componentEvent', {
         type: 'render',
-        target: new Fliplet.Interact.ComponentNode($el)
+        target: new Fliplet.Interact.ComponentNode(el)
       });
-    }
+    };
 
-    function studioEventHandler() {
-      Fliplet.Studio.onEvent(function(event) {
-        var eventDetail = event.detail;
+    const debounceSave = debounce(saveChanges, 500, { leading: true });
+
+    const studioEventHandler = () => {
+      Fliplet.Studio.onEvent((event) => {
+        const { type, payload } = event.detail;
 
         if (!editor || !tinymce.activeEditor || editor.id !== tinymce.activeEditor.id) {
           return;
         }
 
-        switch (eventDetail.type) {
+        switch (type) {
           case 'tinymce.execCommand':
-            if (!eventDetail.payload) {
-              break;
-            }
-
-            var cmd = eventDetail.payload.cmd;
-            var ui = eventDetail.payload.ui;
-            var value = eventDetail.payload.value;
-
-            tinymce.activeEditor.execCommand(cmd, ui, value);
-
+            if (!payload) break;
+            tinymce.activeEditor.execCommand(payload.cmd, payload.ui, payload.value);
             break;
           case 'tinymce.applyFormat':
             editor = tinymce.activeEditor;
-            editor.undoManager.transact(function() {
+            editor.undoManager.transact(() => {
               editor.focus();
-              editor.formatter.apply(
-                eventDetail.payload.format,
-                {
-                  value: eventDetail.payload.value
-                }
-              );
+              editor.formatter.apply(payload.format, { value: payload.value });
               editor.nodeChanged();
             });
-
             break;
           case 'tinymce.removeFormat':
             editor = tinymce.activeEditor;
-            editor.undoManager.transact(function() {
+            editor.undoManager.transact(() => {
               editor.focus();
-              editor.formatter.remove(
-                eventDetail.payload.format,
-                {
-                  value: null
-                }, null, true
-              );
+              editor.formatter.remove(payload.format, { value: null }, null, true);
               editor.nodeChanged();
             });
-
             break;
           case 'widgetCancel':
             if (onBlur) {
-              // Remove tinymce on blur
               editor.hide();
             }
-
-            break;
-          default:
             break;
         }
       });
-    }
+    };
 
-    function attachEventHandler() {
-      $el.on('click', function() {
-        initializeEditor().then(function() {
-          editor.show();
-        });
+    const attachEventHandler = () => {
+      el.addEventListener('click', async () => {
+        await initializeEditor();
+        editor.show();
 
         // Update element highlight if there isn't already an inline element selected
-        if (!$('[data-id="' + widgetData.id + '"] .mce-content-body [data-mce-selected="1"]').length) {
+        if (!document.querySelector(`[data-id="${widgetData.id}"] .mce-content-body [data-mce-selected="1"]`)) {
           Fliplet.Widget.updateHighlightDimensions(widgetData.id);
         }
       });
-    }
+    };
 
-    function initializeEditor() {
-      editor = tinymce.get($el.attr('id'));
-
-      if (editor) {
-        return Promise.resolve(editor);
+    const initializeEditor = async () => {
+      // Ensure the element has an ID
+      if (!el.id) {
+        el.id = 'text-widget-' + widgetData.id;
       }
 
-      return new Promise(function(resolve) {
-        var tinymceVersion = tinymce.majorVersion + '.' + tinymce.minorVersion;
-        var plugins = [
+      editor = tinymce.get(el.id);
+
+      if (editor) {
+        return editor;
+      }
+
+      return new Promise((resolve) => {
+        const tinymceVersion = `${tinymce.majorVersion}.${tinymce.minorVersion}`;
+        let plugins = [
           'advlist', 'lists', 'link', 'image', 'charmap',
           'searchreplace', 'wordcount', 'insertdatetime', 'table', 'textcolor'
         ];
 
-        var deprecatedPlugins = {
+        const deprecatedPlugins = {
           '6.8.1': ['textcolor']
         };
 
         // Remove deprecated plugins
-        plugins = _.difference(plugins, deprecatedPlugins[tinymceVersion]);
+        plugins = plugins.filter(plugin => !deprecatedPlugins[tinymceVersion]?.includes(plugin));
 
-        $el.tinymce({
+        tinymce.init({
+          target: el,
           inline: true,
           menubar: false,
           force_br_newlines: false,
@@ -237,17 +237,15 @@
             'removeformat'
           ].join(' '),
           fontsize_formats: '8px 10px 12px 14px 16px 18px 24px 36px',
-          setup: function(ed) {
-            ed.on('init', function() {
+          setup: (ed) => {
+            ed.on('init', () => {
               editor = ed;
               editors[widgetData.id] = ed;
 
               // Removes position from Editor element.
               // TinyMCE adds the position style to place the toolbar absolute positioned
               // We hide the toolbar and the TinyMCE feature is causing problems
-              $el.attr('style', function(i, style) {
-                return style.replace(/position[^;]+;?/g, '');
-              });
+              el.style.cssText = el.style.cssText.replace(/position[^;]+;?/g, '');
 
               // To process image selection after image is loaded
               Fliplet.Widget.updateHighlightDimensions();
@@ -255,7 +253,7 @@
               resolve();
             });
 
-            ed.on('change', function() {
+            ed.on('change', () => {
               Fliplet.Widget.updateHighlightDimensions(widgetData.id);
 
               if (!isInitialized) {
@@ -266,7 +264,7 @@
               debounceSave();
             });
 
-            ed.on('input', function() {
+            ed.on('input', () => {
               Fliplet.Widget.updateHighlightDimensions(widgetData.id);
 
               if (!isInitialized) {
@@ -277,28 +275,27 @@
               debounceSave();
             });
 
-            ed.on('focus', function() {
+            ed.on('focus', () => {
               if (!widgetData.html) {
-                $el.empty();
-                $el.removeClass('fl-text-empty');
+                el.innerHTML = '';
+                el.classList.remove('fl-text-empty');
               }
 
-              $el.closest('[draggable="true"]').attr('draggable', false);
+              el.closest('[draggable="true"]').setAttribute('draggable', 'false');
               Fliplet.Studio.emit('show-toolbar', true);
               Fliplet.Studio.emit('set-wysiwyg-status', true);
             });
 
-            ed.on('blur', function() {
+            ed.on('blur', () => {
               if (tinymce.activeEditor.getContent() === '') {
-                insertPlaceholder();
+                el.classList.add('fl-text-empty');
                 editor.hide();
-                return;
+              } else {
+                el.classList.remove('fl-text-empty');
               }
 
-              $el.removeClass('fl-text-empty');
-
               onBlur = true;
-              $el.closest('[draggable="false"]').attr('draggable', true);
+              el.closest('[draggable="false"]').setAttribute('draggable', 'true');
 
               Fliplet.Studio.emit('set-wysiwyg-status', false);
 
@@ -306,16 +303,16 @@
                 return;
               }
 
-              // Save changes
+              // Always save changes on blur
               debounceSave();
             });
 
-            ed.on('nodeChange', function(e) {
+            ed.on('nodeChange', (e) => {
               /* Mirror TinyMCE selection and styles to Studio TinyMCE instance */
 
               // Update element highlight if there isn't already an inline element selected
               if (isInitialized
-                && !$('[data-id="' + widgetData.id + '"] .mce-content-body [data-mce-selected="1"]').length) {
+                && !document.querySelector(`[data-id="${widgetData.id}"] .mce-content-body [data-mce-selected="1"]`)) {
                 Fliplet.Widget.updateHighlightDimensions(widgetData.id);
               }
 
@@ -326,8 +323,7 @@
                 e.parents[e.parents.length - 1].classList.add(MIRROR_ROOT_CLASS);
               }
 
-              var fontFamily = window.getComputedStyle(e.element).getPropertyValue('font-family');
-              var fontSize = window.getComputedStyle(e.element).getPropertyValue('font-size');
+              const { fontFamily, fontSize } = window.getComputedStyle(e.element);
 
               // Send content to Studio
               Fliplet.Studio.emit('tinymce', {
@@ -336,12 +332,12 @@
                   html: e.parents.length
                     ? e.parents[e.parents.length - 1].outerHTML
                     : e.element.outerHTML,
-                  styles: [
-                    '.' + MIRROR_ELEMENT_CLASS + ' {',
-                    '\tfont-family: ' + fontFamily + ';',
-                    '\tfont-size: ' + fontSize + ';',
-                    '}'
-                  ].join('\n')
+                  styles: `
+                    .${MIRROR_ELEMENT_CLASS} {
+                      font-family: ${fontFamily};
+                      font-size: ${fontSize};
+                    }
+                  `
                 }
               });
 
@@ -355,67 +351,43 @@
           }
         });
       });
-    }
+    };
 
-    function registerHandlebarsHelpers() {
-      Handlebars.registerHelper('isInteractable', function(options) {
-        var result = options.data.root.mode === 'interact' || isDev;
-
-        if (result === false) {
-          return options.inverse(this);
-        }
-
-        return options.fn(this);
-      });
-    }
-
-    function insertPlaceholder() {
-      var contentHTML = contentTemplate({ mode });
-      $el.html(contentHTML);
-      $el.addClass('fl-text-empty');
-    }
-
-    function init() {
-      registerHandlebarsHelpers();
-
+    const init = async () => {
       if (!widgetData.html) {
-        insertPlaceholder();
+        el.classList.add('fl-text-empty');
       } else {
-        $el.removeClass('fl-text-empty');
+        el.classList.remove('fl-text-empty');
       }
 
-      if (mode !== 'interact') {
-        Fliplet.Widget.initializeChildren($el);
-
+      if (getMode() !== 'interact') {
+        Fliplet.Widget.initializeChildren(el);
         cleanUpContent();
-
-        Fliplet.Widget.initializeChildren($el.get(0));
+        Fliplet.Widget.initializeChildren(el);
 
         if (!isDev) {
           return;
         }
       }
 
-      initializeEditor()
-        .then(function() {
-          isInitialized = true;
-          editor.hide();
+      try {
+        await initializeEditor();
+        isInitialized = true;
+        editor.hide();
 
-          studioEventHandler();
-          attachEventHandler();
-        });
-    }
+        studioEventHandler();
+        attachEventHandler();
+      } catch (error) {
+        console.error('Failed to initialize editor:', error);
+      }
+    };
 
     init();
   }, {
     supportsDynamicContext: true
   });
 
-  Fliplet.Widget.register('Text', function() {
-    return {
-      get: function(id) {
-        return editors[id];
-      }
-    };
-  });
+  Fliplet.Widget.register('Text', () => ({
+    get: (id) => editors[id]
+  }));
 })();
