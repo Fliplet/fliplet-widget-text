@@ -200,25 +200,16 @@
       }
 
       return new Promise((resolve) => {
-        const tinymceVersion = `${tinymce.majorVersion}.${tinymce.minorVersion}`;
         let plugins = [
           'advlist', 'lists', 'link', 'image', 'charmap',
-          'searchreplace', 'wordcount', 'insertdatetime', 'table', 'textcolor'
+          'searchreplace', 'wordcount', 'insertdatetime', 'table'
         ];
-
-        const deprecatedPlugins = {
-          '6.8.1': ['textcolor']
-        };
-
-        // Remove deprecated plugins
-        plugins = plugins.filter(plugin => !deprecatedPlugins[tinymceVersion]?.includes(plugin));
 
         tinymce.init({
           target: el,
           inline: true,
           menubar: false,
           force_br_newlines: false,
-          force_p_newlines: true,
           forced_root_block: 'p',
           object_resizing: false,
           verify_html: false,
