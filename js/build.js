@@ -279,7 +279,8 @@
 
             ed.on('focus', function() {
               if (!widgetData.html) {
-                $el.text('');
+                $el.empty();
+                $el.removeClass('fl-text-empty');
               }
 
               $el.closest('[draggable="true"]').attr('draggable', false);
@@ -291,9 +292,10 @@
               if (tinymce.activeEditor.getContent() === '') {
                 insertPlaceholder();
                 editor.hide();
-
                 return;
               }
+
+              $el.removeClass('fl-text-empty');
 
               onBlur = true;
               $el.closest('[draggable="false"]').attr('draggable', true);
@@ -369,15 +371,17 @@
 
     function insertPlaceholder() {
       var contentHTML = contentTemplate({ mode });
-
       $el.html(contentHTML);
+      $el.addClass('fl-text-empty');
     }
 
     function init() {
       registerHandlebarsHelpers();
 
-      if (!widgetData.html && !$el.find('.' + PLACEHOLDER_CLASS).length) {
+      if (!widgetData.html) {
         insertPlaceholder();
+      } else {
+        $el.removeClass('fl-text-empty');
       }
 
       if (mode !== 'interact') {
