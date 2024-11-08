@@ -65,6 +65,7 @@
 
     const saveChanges = async () => {
       if (getMode() === 'preview') {
+
         return;
       }
 
@@ -95,11 +96,13 @@
 
       const replacedHTML = replaceWidgetInstances(doc.body.innerHTML);
 
+
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes
       const html = await Fliplet.Hooks.run('beforeSavePageContent', replacedHTML);
       
       data.html = [html].flat().at(-1) || replacedHTML;
+
       
       // Cache HTML for the first time
       // The first save is always triggered by 'nodeChange' event on focus
@@ -122,6 +125,7 @@
           data
         });
       }
+
 
       Fliplet.Studio.emit('page-preview-send-event', {
         type: 'savePage'
