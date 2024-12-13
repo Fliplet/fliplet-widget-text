@@ -18,10 +18,13 @@
   },
   "build": {
     "dependencies": [
-      "fliplet-core"
+      "fliplet-core",
+      "lodash",
+      "handlebars"
     ],
     "assets": [
       "css/build.css",
+      "js/build.templates.js",
       "js/build.js"
     ]
   },

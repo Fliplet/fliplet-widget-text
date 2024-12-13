@@ -27,14 +27,3 @@ fl-list-repeater-row.readonly .fl-text-placeholder {
   opacity: 0;
   visibility: hidden;
 }
-
-.fl-text-empty {
-  position: relative;
-}
-
-.fl-text-empty:not(.mce-edit-focus.focus-visible)::after {
-  content: 'Click here to start typing';
-  color: #999;
-  position: absolute;
-  top: 0;
-}
