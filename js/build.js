@@ -286,7 +286,7 @@
               const lastContainer = ed.bodyElement.lastChild;
               const lastChild = lastContainer.lastChild;
 
-              if (lastChild.dataset['flWidgetInstance'] !== undefined) {
+              if (lastChild.dataset?.['flWidgetInstance'] !== undefined) {
                 lastContainer.innerHTML += '&nbsp;';
               }
 
