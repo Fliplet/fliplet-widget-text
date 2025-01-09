@@ -281,6 +281,14 @@
               if (!widgetData.html) {
                 $el.text('');
               }
+              
+              // Ensure there's a &nbsp; at the end of the content if the last child is a widget instance
+              const lastContainer = ed.bodyElement.lastChild;
+              const lastChild = lastContainer.lastChild;
+
+              if (lastChild.dataset?.['flWidgetInstance'] !== undefined) {
+                lastContainer.innerHTML += '&nbsp;';
+              }
 
               $el.closest('[draggable="true"]').attr('draggable', false);
               Fliplet.Studio.emit('show-toolbar', true);
