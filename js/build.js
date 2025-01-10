@@ -282,19 +282,11 @@
                 $el.text('');
               }
               
-              const zeroWidthSpaceSpan = `<span class="fl-text-placeholder">&#8203;</span>` 
-              
+              // Prevent editing widget instances content directly
               const widgetInstances = $el.find('[data-fl-widget-instance]');
               widgetInstances.each(function() {
                 const widgetInstance = $(this);
-                // Prevent editing widget instances content directly
                 widgetInstance.attr('contenteditable', false);
-
-                // Add a zero width space after each widget instance if there's no text after it or there's a widget instance after it
-                const nextSibling = widgetInstance.nextSibling;
-                if (!nextSibling || nextSibling.dataset?.['flWidgetInstance'] !== undefined) {
-                  widgetInstance.after(zeroWidthSpaceSpan);
-                }
               });
 
               $el.closest('[draggable="true"]').attr('draggable', false);
@@ -303,19 +295,6 @@
             });
 
             ed.on('blur', function() {
-              // Remove or clean up zeroWidthSpaceSpans
-              $el.find('.fl-text-placeholder').each(function() {
-                const innerText = $(this).text();
-                const zeroWidthSpace = String.fromCharCode(8203);
-                const cleanedInnerText = innerText.replace(zeroWidthSpace, '');
-                if (cleanedInnerText === '') {
-                  $(this).remove();
-                } else {
-                  $(this).text(cleanedInnerText);
-                  $(this).removeClass('fl-text-placeholder');
-                }
-              });
-
               if (tinymce.activeEditor.getContent() === '') {
                 insertPlaceholder();
                 editor.hide();
