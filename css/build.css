@@ -14,11 +14,6 @@
   pointer-events: all !important;
 }
 
-.mce-content-body *[contentEditable="false"][data-mce-selected] {
-  outline: none !important;
-  cursor: default !important;
-}
-
 .fl-wysiwyg-text {
   word-break: break-word;
 }
