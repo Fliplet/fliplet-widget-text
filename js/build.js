@@ -284,10 +284,13 @@
               
               const zeroWidthSpaceSpan = `<span class="fl-text-placeholder">&#8203;</span>` 
               
-              // Add a zero width space after each widget instance if there's no text after it or there's a widget instance after it
               const widgetInstances = $el.find('[data-fl-widget-instance]');
               widgetInstances.each(function() {
                 const widgetInstance = $(this);
+                // Prevent editing widget instances content directly
+                widgetInstance.attr('contenteditable', false);
+
+                // Add a zero width space after each widget instance if there's no text after it or there's a widget instance after it
                 const nextSibling = widgetInstance.nextSibling;
                 if (!nextSibling || nextSibling.dataset?.['flWidgetInstance'] !== undefined) {
                   widgetInstance.after(zeroWidthSpaceSpan);
