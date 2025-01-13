@@ -282,13 +282,12 @@
                 $el.text('');
               }
               
-              // Ensure there's a &nbsp; at the end of the content if the last child is a widget instance
-              const lastContainer = ed.bodyElement.lastChild;
-              const lastChild = lastContainer.lastChild;
-
-              if (lastChild.dataset?.['flWidgetInstance'] !== undefined) {
-                lastContainer.innerHTML += '&nbsp;';
-              }
+              // Prevent editing widget instances content directly
+              const widgetInstances = $el.find('[data-fl-widget-instance]');
+              widgetInstances.each(function() {
+                const widgetInstance = $(this);
+                widgetInstance.attr('contenteditable', false);
+              });
 
               $el.closest('[draggable="true"]').attr('draggable', false);
               Fliplet.Studio.emit('show-toolbar', true);
