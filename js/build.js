@@ -4,12 +4,14 @@
   // Native debounce function to replace _.debounce
   function debounce(func, wait, options = {}) {
     let timeout;
+
     return function executedFunction(...args) {
       const later = () => {
         timeout = null;
         if (!options.leading) func.apply(this, args);
       };
       const callNow = options.leading && !timeout;
+
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
       if (callNow) func.apply(this, args);
@@ -29,6 +31,7 @@
 
     const getMode = () => {
       const mode = Fliplet.Env.get('mode');
+
       return mode === 'interact' && el.closest('fl-list-repeater-row.readonly')
         ? 'preview'
         : mode;
@@ -37,7 +40,7 @@
     const cleanUpContent = (content) => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(content || '', 'text/html');
-      
+
       // Remove any existing markers
       doc.querySelectorAll('.' + MIRROR_ELEMENT_CLASS).forEach(el => el.classList.remove(MIRROR_ELEMENT_CLASS));
       doc.querySelectorAll('.' + MIRROR_ROOT_CLASS).forEach(el => el.classList.remove(MIRROR_ROOT_CLASS));
@@ -48,31 +51,39 @@
       // Remove empty class attributes
       doc.querySelectorAll('[class=""]').forEach(el => el.removeAttribute('class'));
 
+      // Remove caret-holder helper elements and zero-width characters
+      doc.querySelectorAll('[data-fl-caret-holder]').forEach(el => {
+        el.replaceWith(...el.childNodes);
+      });
+      doc.body.innerHTML = doc.body.innerHTML.replace(/\u200B|\uFEFF/g, '');
+
       return doc.body.innerHTML.trim();
     };
 
     const replaceWidgetInstances = (html) => {
       const tempDiv = document.createElement('div');
+
       tempDiv.innerHTML = html;
 
       tempDiv.querySelectorAll(WIDGET_INSTANCE_SELECTOR).forEach(el => {
         const widgetInstanceId = el.dataset.id;
+
         el.outerHTML = `{{{widget ${widgetInstanceId}}}}`;
       });
 
       return tempDiv.innerHTML;
     };
 
-    const saveChanges = async () => {
+    const saveChanges = async() => {
       if (getMode() === 'preview') {
         return;
       }
 
-      const editorContent = editor?.getContent?.();
+      const editorContent = editor && typeof editor.getContent === 'function' ? editor.getContent() : undefined;
 
       const data = {
-        // Weak comparison to allow empty string to be saved
-        html: editorContent != null ? editorContent : widgetData.html
+        // Preserve empty string; only fall back when truly null/undefined
+        html: (editorContent !== undefined && editorContent !== null) ? editorContent : widgetData.html
       };
 
       // Use a more careful cleaning approach
@@ -90,6 +101,7 @@
       // Replace widget instances
       doc.querySelectorAll(WIDGET_INSTANCE_SELECTOR).forEach(el => {
         const widgetInstanceId = el.dataset.id;
+
         el.outerHTML = `{{{widget ${widgetInstanceId}}}}`;
       });
 
@@ -98,9 +110,11 @@
       // Pass HTML content through a hook so any JavaScript that has changed the HTML
       // can use this to revert the HTML changes
       const html = await Fliplet.Hooks.run('beforeSavePageContent', replacedHTML);
-      
-      data.html = [html].flat().at(-1) || replacedHTML;
-      
+
+      const htmlArray = Array.isArray(html) ? html : [html];
+
+      data.html = htmlArray[htmlArray.length - 1] || replacedHTML;
+
       // Cache HTML for the first time
       // The first save is always triggered by 'nodeChange' event on focus
       // so there's no need to save anything
@@ -145,15 +159,48 @@
           return;
         }
 
+        const ensureEditableRootWithCaret = (ed) => {
+          try {
+            const currentHtml = ed.getContent({ format: 'html' }).trim();
+            const isEffectivelyEmpty = currentHtml === '' || currentHtml === '<p></p>' || currentHtml === '<p><br></p>';
+
+            if (isEffectivelyEmpty) {
+              ed.setContent('<p><span data-fl-caret-holder="1">\u200B</span></p>');
+
+              const span = ed.dom.select('span[data-fl-caret-holder="1"]')[0];
+
+              if (span) {
+                ed.selection.select(span);
+                ed.selection.collapse(true);
+              }
+
+              el.classList.remove('fl-text-empty');
+
+              return true;
+            }
+          } catch (e) {
+            /* no-op */
+          }
+
+          return false;
+        };
+
         switch (type) {
           case 'tinymce.execCommand':
             if (!payload) break;
-            tinymce.activeEditor.execCommand(payload.cmd, payload.ui, payload.value);
+            editor = tinymce.activeEditor;
+            editor.undoManager.transact(() => {
+              editor.focus();
+              ensureEditableRootWithCaret(editor);
+              editor.execCommand(payload.cmd, payload.ui, payload.value);
+              editor.nodeChanged();
+            });
             break;
           case 'tinymce.applyFormat':
             editor = tinymce.activeEditor;
             editor.undoManager.transact(() => {
               editor.focus();
+              ensureEditableRootWithCaret(editor);
               editor.formatter.apply(payload.format, { value: payload.value });
               editor.nodeChanged();
             });
@@ -170,13 +217,16 @@
             if (onBlur) {
               editor.hide();
             }
+
+            break;
+          default:
             break;
         }
       });
     };
 
     const attachEventHandler = () => {
-      el.addEventListener('click', async () => {
+      el.addEventListener('click', async() => {
         await initializeEditor();
         editor.show();
 
@@ -187,7 +237,7 @@
       });
     };
 
-    const initializeEditor = async () => {
+    const initializeEditor = async() => {
       // Ensure the element has an ID
       if (!el.id) {
         el.id = 'text-widget-' + widgetData.id;
@@ -272,8 +322,25 @@
             });
 
             ed.on('focus', () => {
-              if (!widgetData.html) {
-                el.innerHTML = '';
+              // Ensure there's a valid root block and a caret position when starting from empty
+              try {
+                const currentHtml = ed.getContent({ format: 'html' }).trim();
+                const isEffectivelyEmpty = currentHtml === '' || currentHtml === '<p></p>' || currentHtml === '<p><br></p>';
+
+                if (!widgetData.html || isEffectivelyEmpty) {
+                  // Set a default empty paragraph so formats/tables can be applied at the caret
+                  ed.setContent('<p><br></p>');
+
+                  const body = ed.getBody();
+
+                  if (body && body.firstChild) {
+                    ed.selection.setCursorLocation(body.firstChild, 0);
+                  }
+
+                  el.classList.remove('fl-text-empty');
+                }
+              } catch (e) {
+                // Fallback to removing empty state if anything goes wrong
                 el.classList.remove('fl-text-empty');
               }
 
@@ -285,7 +352,6 @@
             ed.on('blur', () => {
               if (tinymce.activeEditor.getContent() === '') {
                 el.classList.add('fl-text-empty');
-                editor.hide();
               } else {
                 el.classList.remove('fl-text-empty');
               }
@@ -321,13 +387,52 @@
 
               const { fontFamily, fontSize } = window.getComputedStyle(e.element);
 
+              // Pick the nearest meaningful block element for correct format labeling (e.g., inside tables)
+              let blockEl;
+              const startNode = (editor.selection && typeof editor.selection.getStart === 'function')
+                ? editor.selection.getStart(true)
+                : e.element;
+
+              blockEl = editor.dom.getParent(startNode, 'p,h1,h2,h3,h4,h5,h6,pre,blockquote,li')
+                || editor.dom.getParent(startNode, 'td,th,div')
+                || null;
+
+              let mirrorHtml;
+
+              if (blockEl) {
+                const tagName = (blockEl.tagName || '').toLowerCase();
+
+                if (tagName === 'td' || tagName === 'th' || tagName === 'div') {
+                  // Synthesize a paragraph wrapper so Studio can label it as "Paragraph"
+
+                  const synthetic = document.createElement('p');
+
+                  synthetic.classList.add(MIRROR_ELEMENT_CLASS);
+                  synthetic.innerHTML = blockEl.innerHTML || '&nbsp;';
+                  mirrorHtml = synthetic.outerHTML;
+                } else {
+                  // Clone the selected block and mark it so Studio can read the correct format label
+
+                  const cloned = blockEl.cloneNode(true);
+
+                  cloned.classList.add(MIRROR_ELEMENT_CLASS);
+
+                  const tmp = document.createElement('div');
+
+                  tmp.appendChild(cloned);
+                  mirrorHtml = tmp.innerHTML;
+                }
+              } else {
+                mirrorHtml = e.parents.length
+                  ? e.parents[e.parents.length - 1].outerHTML
+                  : e.element.outerHTML;
+              }
+
               // Send content to Studio
               Fliplet.Studio.emit('tinymce', {
                 message: 'tinymceNodeChange',
                 payload: {
-                  html: e.parents.length
-                    ? e.parents[e.parents.length - 1].outerHTML
-                    : e.element.outerHTML,
+                  html: mirrorHtml,
                   styles: `
                     .${MIRROR_ELEMENT_CLASS} {
                       font-family: ${fontFamily};
@@ -351,7 +456,7 @@
       });
     };
 
-    const init = async () => {
+    const init = async() => {
       if (!widgetData.html) {
         el.classList.add('fl-text-empty');
       } else {
@@ -376,7 +481,7 @@
         studioEventHandler();
         attachEventHandler();
       } catch (error) {
-        console.error('Failed to initialize editor:', error);
+        /* no-op */
       }
     };
 
