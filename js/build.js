@@ -2,6 +2,7 @@
   var editors = {};
 
   Fliplet.Widget.instance('text', function(widgetData) {
+    var el = this;
     var $el = $(this);
     var editor;
     var MIRROR_ELEMENT_CLASS = 'fl-mirror-element';
@@ -189,7 +190,12 @@
     }
 
     function initializeEditor() {
-      editor = tinymce.get($el.attr('id'));
+      // Ensure the element has an ID for TinyMCE
+      if (!el.id) {
+        el.id = 'text-widget-' + widgetData.id;
+      }
+
+      editor = tinymce.get(el.id);
 
       if (editor) {
         return Promise.resolve(editor);
@@ -209,7 +215,8 @@
         // Remove deprecated plugins
         plugins = _.difference(plugins, deprecatedPlugins[tinymceVersion]);
 
-        $el.tinymce({
+        tinymce.init({
+          target: el,
           inline: true,
           menubar: false,
           force_br_newlines: false,
