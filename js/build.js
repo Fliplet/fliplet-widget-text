@@ -1091,7 +1091,7 @@
                 const currentHtml = ed.getContent({ format: 'html' }).trim();
                 const isEffectivelyEmpty = currentHtml === '' || currentHtml === '<p></p>' || currentHtml === '<p><br></p>';
 
-                if (!widgetData.html || isEffectivelyEmpty) {
+                if (isEffectivelyEmpty) {
                   // Set a default empty paragraph so formats/tables can be applied at the caret
                   ed.setContent('<p><br></p>');
 
@@ -1374,7 +1374,6 @@
                 // Studio's toolbar sometimes reads state from the selected/root element, not our caret marker.
                 // Apply the mirror element class to the root as well so colors/fonts can be inferred reliably.
                 rootClone.classList.add(MIRROR_ROOT_CLASS);
-                rootClone.classList.add(MIRROR_ELEMENT_CLASS);
 
                 const insertCaretMarker = () => {
                   let rng = null;
