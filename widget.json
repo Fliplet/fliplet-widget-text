@@ -19,7 +19,7 @@
   "build": {
     "dependencies": [
       "fliplet-core",
-      "lodash",
+      "fliplet-utils",
       "handlebars"
     ],
     "assets": [
