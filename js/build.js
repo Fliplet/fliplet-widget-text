@@ -8,7 +8,7 @@
     var MIRROR_ROOT_CLASS = 'fl-mirror-root';
     var PLACEHOLDER_CLASS = 'fl-text-placeholder';
     var WIDGET_INSTANCE_SELECTOR = '[data-fl-widget-instance]';
-    var debounceSave = _.debounce(saveChanges, 500, { leading: true });
+    var debounceSave = Fliplet.Utils.debounce(saveChanges, 500, { leading: true });
     var mode = Fliplet.Env.get('mode');
     var isDev = Fliplet.Env.get('development');
     var isInitialized = false;
@@ -207,7 +207,7 @@
         };
 
         // Remove deprecated plugins
-        plugins = _.difference(plugins, deprecatedPlugins[tinymceVersion]);
+        plugins = Fliplet.Utils.difference(plugins, deprecatedPlugins[tinymceVersion]);
 
         $el.tinymce({
           inline: true,
