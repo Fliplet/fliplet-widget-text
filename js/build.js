@@ -887,6 +887,57 @@
               editor.nodeChanged();
             });
             break;
+          case 'tinymce.updateTable':
+            if (!payload) break;
+            editor = tinymce.activeEditor;
+
+            if (!editor) break;
+
+            editor.undoManager.transact(() => {
+              cancelPendingBlurDisable();
+              Fliplet.Studio.emit('set-wysiwyg-status', true);
+              editor.focus();
+
+              const body = editor.getBody();
+
+              if (!body) return;
+
+              const existingTable = body.querySelector('table');
+
+              if (payload.tableHtml) {
+                if (existingTable) {
+                  // Replace the existing table with the updated one
+                  const tempDiv = document.createElement('div');
+
+                  tempDiv.innerHTML = payload.tableHtml;
+
+                  const newTable = tempDiv.querySelector('table');
+
+                  if (newTable) {
+                    existingTable.parentNode.replaceChild(newTable, existingTable);
+                  }
+                }
+              } else if (existingTable) {
+                // Table was deleted (mceTableDelete)
+                const nextSibling = existingTable.nextElementSibling;
+                const prevSibling = existingTable.previousElementSibling;
+
+                existingTable.parentNode.removeChild(existingTable);
+
+                // Place caret after deletion
+                const caretTarget = nextSibling || prevSibling || body.firstChild;
+
+                if (caretTarget) {
+                  editor.selection.setCursorLocation(caretTarget, 0);
+                }
+              }
+
+              editor.nodeChanged();
+            });
+
+            // Save changes after table update
+            debounceSave();
+            break;
           case 'widgetCancel':
             if (onBlur) {
               editor.hide();
@@ -1091,7 +1142,7 @@
                 const currentHtml = ed.getContent({ format: 'html' }).trim();
                 const isEffectivelyEmpty = currentHtml === '' || currentHtml === '<p></p>' || currentHtml === '<p><br></p>';
 
-                if (!widgetData.html || isEffectivelyEmpty) {
+                if (isEffectivelyEmpty) {
                   // Set a default empty paragraph so formats/tables can be applied at the caret
                   ed.setContent('<p><br></p>');
 
@@ -1374,7 +1425,6 @@
                 // Studio's toolbar sometimes reads state from the selected/root element, not our caret marker.
                 // Apply the mirror element class to the root as well so colors/fonts can be inferred reliably.
                 rootClone.classList.add(MIRROR_ROOT_CLASS);
-                rootClone.classList.add(MIRROR_ELEMENT_CLASS);
 
                 const insertCaretMarker = () => {
                   let rng = null;
